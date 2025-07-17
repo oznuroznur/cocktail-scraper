@@ -29,14 +29,18 @@ def get_all_list_pages(driver):
     bypass_age_verification(driver)
     time.sleep(2)
     soup = BeautifulSoup(driver.page_source, "html.parser")
-    pagination = soup.select_one(".iba-cocktails-pagination")
-    pages = set([BASE_URL])
-    if pagination:
-        for a in pagination.find_all("a", class_="page-numbers"):
-            href = a.get("href")
-            if href:
-                pages.add(href)
-    return sorted(pages)
+
+    last_page = 1
+    for a in soup.select(".iba-cocktails-pagination a.page-numbers"):
+        text = a.get_text(strip=True)
+        if text.isdigit():
+            last_page = max(last_page, int(text))
+
+    print(f"📄 Toplam sayfa sayısı: {last_page}")
+    pages = [f"{BASE_URL}"] + [f"{BASE_URL}page/{i}/" for i in range(2, last_page + 1)]
+    return pages
+
+
 
 # Get all cocktail links from a list page
 def get_cocktail_links_from_page(driver, page_url):
@@ -76,9 +80,10 @@ def scrape_cocktail_detail(url):
     method_div = find_shortcode_after_heading(s, "Method")
     garnish_div = find_shortcode_after_heading(s, "Garnish")
 
-    ingredients = "\n".join(li.get_text(strip=True) for li in ingredients_div.find_all("li")) if ingredients_div else ""
-    method = method_div.get_text(separator="\n", strip=True) if method_div else ""
+    ingredients = ", ".join(li.get_text(strip=True) for li in ingredients_div.find_all("li")) if ingredients_div else ""
+    method = ", ".join(p.get_text(strip=True) for p in method_div.find_all("p")) if method_div else ""
     garnish = garnish_div.get_text(strip=True) if garnish_div else ""
+
 
     return {
         "Name": name,
